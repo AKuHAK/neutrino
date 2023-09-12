@@ -1022,11 +1022,13 @@ int main(int argc, char *argv[])
         }
         // Try to get ISO layer1 size
         layer1_lba_start = 0;
-        lseek64(fd_iso, (uint64_t)layer0_lba_size * 2048, SEEK_SET);
-        if (read(fd_iso, buffer, sizeof(buffer)) == sizeof(buffer)) {
-            if ((buffer[0x00] == 1) && (!strncmp(&buffer[0x01], "CD001", 5))) {
-                layer1_lba_start = layer0_lba_size - 16;
-                printf("- DVD-DL detected\n");
+        if ((eMediaType == SCECdDVDV) || (eMediaType == SCECdPS2DVD)) {
+            lseek64(fd_iso, (uint64_t)layer0_lba_size * 2048, SEEK_SET);
+            if (read(fd_iso, buffer, sizeof(buffer)) == sizeof(buffer)) {
+                if ((buffer[0x00] == 1) && (!strncmp(&buffer[0x01], "CD001", 5))) {
+                    layer1_lba_start = layer0_lba_size - 16;
+                    printf("- DVD-DL detected\n");
+                }
             }
         }
         printf("- size = %dMiB\n", (int)(iso_size / (1024 * 1024)));
