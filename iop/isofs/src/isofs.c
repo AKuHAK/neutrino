@@ -58,12 +58,13 @@ struct MountData
 {
     int fd;
     int sema;
+    u16 sectorSize;
     layer_info_t layer_info[2];
     FHANDLE cdvdman_fdhandles[MAX_FDHANDLES];
 };
 
 static struct MountData MountPoint;
-static unsigned char cdvdman_buf[2048];
+static unsigned char cdvdman_buf[2352];
 
 static int IsofsUnsupported(void)
 {
@@ -119,21 +120,21 @@ static int IsofsDeinit(iop_device_t *device)
 }
 
 //-------------------------------------------------------------------------
-static void longLseek(int fd, unsigned int lba)
+static void longLseek(int fd, unsigned int lba, u16 sector_size)
 {
     unsigned int remaining, toSeek;
 
-    if (lba > INT_MAX / 2048) {
-        lseek(fd, INT_MAX / 2048 * 2048, SEEK_SET);
+    if (lba > INT_MAX / sector_size) {
+        lseek(fd, INT_MAX / sector_size * sector_size, SEEK_SET);
 
-        remaining = lba - INT_MAX / 2048;
+        remaining = lba - INT_MAX / sector_size;
         while (remaining > 0) {
-            toSeek = remaining > INT_MAX / 2048 ? INT_MAX / 2048 : remaining;
-            lseek(fd, toSeek * 2048, SEEK_CUR);
+            toSeek = remaining > INT_MAX / sector_size ? INT_MAX / sector_size : remaining;
+            lseek(fd, toSeek * sector_size, SEEK_CUR);
             remaining -= toSeek;
         }
     } else {
-        lseek(fd, lba * 2048, SEEK_SET);
+        lseek(fd, lba * sector_size, SEEK_SET);
     }
 }
 
@@ -154,9 +155,9 @@ static int sceCdReadDvdDualInfo(int *on_dual, u32 *layer1_start)
 //-------------------------------------------------------------------------
 static int cdEmuRead(u32 lsn, unsigned int count, void *buffer)
 {
-    longLseek(MountPoint.fd, lsn);
+    longLseek(MountPoint.fd, lsn, MountPoint.sectorSize);
 
-    return (read(MountPoint.fd, buffer, count * 2048) == count * 2048 ? 0 : -EIO);
+    return (read(MountPoint.fd, buffer, count * MountPoint.sectorSize) == count * MountPoint.sectorSize ? 0 : -EIO);
 }
 
 //-------------------------------------------------------------------------
@@ -237,7 +238,7 @@ lbl_startlocate:
         cdEmuRead(tocLBA, 1, cdvdman_buf);
         DPRINTF("cdvdman_locatefile tocLBA read done\n");
 
-        tocLength -= 2048;
+        tocLength -= MountPoint.sectorSize;
         tocLBA++;
 
         tocPos = 0;
@@ -382,7 +383,7 @@ static int IsofsClose(iop_file_t *f)
 
 static int IsofsRead(iop_file_t *f, void *buf, int size)
 {
-    static unsigned char cdvdman_fs_buf[2048];
+    static unsigned char cdvdman_fs_buf[MountPoint.sectorSize];
     FHANDLE *fh = (FHANDLE *)f->privdata;
     unsigned int offset, nsectors, nbytes;
     int rpos;
@@ -396,12 +397,12 @@ static int IsofsRead(iop_file_t *f, void *buf, int size)
 
     rpos = 0;
     if (size > 0) {
-        // Phase 1: read data until the offset of the file is nicely aligned to a 2048-byte boundary.
-        if ((offset = fh->position % 2048) != 0) {
-            nbytes = 2048 - offset;
+        // Phase 1: read data until the offset of the file is nicely aligned to a sector boundary.
+        if ((offset = fh->position % MountPoint.sectorSize) != 0) {
+            nbytes = MountPoint.sectorSize - offset;
             if (size < nbytes)
                 nbytes = size;
-            cdEmuRead(fh->lsn + (fh->position / 2048), 1, cdvdman_fs_buf);
+            cdEmuRead(fh->lsn + (fh->position / MountPoint.sectorSize), 1, cdvdman_fs_buf);
 
             fh->position += nbytes;
             size -= nbytes;
@@ -411,11 +412,11 @@ static int IsofsRead(iop_file_t *f, void *buf, int size)
             buf = (void *)((u8 *)buf + nbytes);
         }
 
-        // Phase 2: read the data to the middle of the buffer, in units of 2048.
-        if ((nsectors = size / 2048) > 0) {
-            nbytes = nsectors * 2048;
+        // Phase 2: read the data to the middle of the buffer, in units of MountPoint.sectorSize.
+        if ((nsectors = size / MountPoint.sectorSize) > 0) {
+            nbytes = nsectors * MountPoint.sectorSize;
 
-            cdEmuRead(fh->lsn + (fh->position / 2048), nsectors, buf);
+            cdEmuRead(fh->lsn + (fh->position / MountPoint.sectorSize), nsectors, buf);
 
             buf += nbytes;
             size -= nbytes;
@@ -423,9 +424,9 @@ static int IsofsRead(iop_file_t *f, void *buf, int size)
             rpos += nbytes;
         }
 
-        // Phase 3: read any remaining data that isn't divisible by 2048.
+        // Phase 3: read any remaining data that isn't divisible by MountPoint.sectorSize.
         if ((nbytes = size) > 0) {
-            cdEmuRead(fh->lsn + (fh->position / 2048), 1, cdvdman_fs_buf);
+            cdEmuRead(fh->lsn + (fh->position / MountPoint.sectorSize), 1, cdvdman_fs_buf);
 
             fh->position += nbytes;
             rpos += nbytes;
@@ -483,12 +484,12 @@ ssema:
     return r;
 }
 
-static int ProbeISO9660(int fd, unsigned int sector, layer_info_t *layer_info)
+static int ProbeISO9660(int fd, unsigned int sector, layer_info_t *layer_info, u16 sector_size)
 {
     int result;
 
-    longLseek(fd, sector);
-    if (read(fd, cdvdman_buf, 2048) == 2048) {
+    longLseek(fd, sector, sector_size);
+    if (read(fd, cdvdman_buf, sector_size) == sector_size) {
         if ((cdvdman_buf[0x00] == 1) && (!memcmp(&cdvdman_buf[0x01], "CD001", 5))) {
             struct dirTocEntry *tocEntryPointer = (struct dirTocEntry *)&cdvdman_buf[0x9c];
 
@@ -520,10 +521,15 @@ static int IsofsMount(iop_file_t *f, const char *fsname, const char *devname, in
     MountPoint.fd = -1;
 
     if ((fd = open(devname, O_RDONLY)) >= 0) {
-        if ((result = ProbeISO9660(fd, 16, &MountPoint.layer_info[0])) == 0)
+        if ((ProbeISO9660(fd, 16, &MountPoint.layer_info[0], 2048)) == 0) {
             MountPoint.fd = fd;
-        else
-            close(fd);
+            MountPoint.sectorSize = 2048;
+        }
+        else if ((result = ProbeISO9660(fd, 16, &MountPoint.layer_info[0], 2352)) == 0) {
+            MountPoint.fd = fd;
+            MountPoint.sectorSize = 2352;
+        }
+        close(fd);
     } else {
         result = fd;
     }

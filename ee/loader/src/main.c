@@ -1033,8 +1033,8 @@ int main(int argc, char *argv[])
         }
         printf("- size = %dMiB\n", (int)(iso_size / (1024 * 1024)));
 
-        if (eMediaType == SCECdNODISC)
-            eMediaType = iso_size <= (333000 * 2048) ? SCECdPS2CD : SCECdPS2DVD;
+        // if (eMediaType == SCECdNODISC)
+        //     eMediaType = iso_size <= (333000 * 2048) ? SCECdPS2CD : SCECdPS2DVD;
 
         const char *sMT;
         switch (eMediaType) {

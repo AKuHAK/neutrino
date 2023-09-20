@@ -117,12 +117,27 @@ static inline void cdvd_readee(void *buf)
         return;
     }
 
-    sector_size = 2048;
-
-    if (r->mode.datapattern == SCECdSecS2328)
-        sector_size = 2328;
-    if (r->mode.datapattern == SCECdSecS2340)
-        sector_size = 2340;
+    switch (r->mode.datapattern) {
+        case SCECdSecS2328:
+            sector_size = 2328;
+            break;
+        case SCECdSecS2340:
+            sector_size = 2340;
+            break;
+        case SCECdSecS2352:
+            sector_size = 2352;
+            break;
+        case SCECdSecS2368:
+            sector_size = 2368;
+            break;
+        case SCECdSecS2448:
+            sector_size = 2448;
+            break;
+        case SCECdSecS2048:
+        default:
+            sector_size = 2048;
+            break;
+    }
 
     r->eeaddr1 = (void *)((u32)r->eeaddr1 & 0x1fffffff);
     r->eeaddr2 = (void *)((u32)r->eeaddr2 & 0x1fffffff);
@@ -241,7 +256,29 @@ static inline void cdvdSt_read(void *buf)
 
     //DPRINTF("%s\n", __FUNCTION__);
 
-    for (rpos = 0, ee_addr = St->buf, remaining = St->sectors; remaining > 0; ee_addr += r * 2048, rpos += r, remaining -= r) {
+    switch (St->mode.datapattern) {
+        case SCECdSecS2328:
+            sector_size = 2328;
+            break;
+        case SCECdSecS2340:
+            sector_size = 2340;
+            break;
+        case SCECdSecS2352:
+            sector_size = 2352;
+            break;
+        case SCECdSecS2368:
+            sector_size = 2368;
+            break;
+        case SCECdSecS2448:
+            sector_size = 2448;
+            break;
+        case SCECdSecS2048:
+        default:
+            sector_size = 2048;
+            break;
+    }
+
+    for (rpos = 0, ee_addr = St->buf, remaining = St->sectors; remaining > 0; ee_addr += r * sector_size, rpos += r, remaining -= r) {
         if ((r = sceCdStRead(remaining, (void *)((u32)ee_addr | 0x80000000), 0, &err)) < 1)
             break;
     }
