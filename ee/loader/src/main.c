@@ -76,6 +76,10 @@ void print_usage()
     printf("                    NOTE: only both emulated, or both real.\n");
     printf("                          mixing not possible\n");
     printf("  -ata1=<mode>      See -ata0=<mode>\n");
+    printf("  -ataid0=<mode>    ATA 0 HDD ID emulation mode, supported are:\n");
+    printf("                    - no (default)\n");
+    printf("                    - <file>\n");
+    printf("                    NOTE: only supported if ata0 is present.\n");
     printf("\n");
     printf("  -mc0=<mode>       MC0 emulation mode, supported are:\n");
     printf("                    - no (default)\n");
@@ -753,6 +757,7 @@ int main(int argc, char *argv[])
     const char *sDVDFile = NULL;
     const char *sATAMode = "no";
     const char *sATA0File = NULL;
+    const char *sATAID0File = NULL;
     const char *sATA1File = NULL;
     const char *sMCMode = "no";
     const char *sMC0File = NULL;
@@ -773,6 +778,8 @@ int main(int argc, char *argv[])
             sDVDMode = &argv[i][5];
         else if (!strncmp(argv[i], "-ata0=", 6))
             sATA0File = &argv[i][6];
+        else if (!strncmp(argv[i], "-ataid0=", 8))
+            sATAID0File = &argv[i][8];
         else if (!strncmp(argv[i], "-ata1=", 6))
             sATA1File = &argv[i][6];
         else if (!strncmp(argv[i], "-mc0=", 5))
@@ -1182,6 +1189,7 @@ int main(int argc, char *argv[])
         // Load fragfile
         if (fhi_bdm_add_file(set_fhi_bdm, FHI_FID_ATA0, sATA0File) < 0)
             return -1;
+        fhi_bdm_add_file(set_fhi_bdm, FHI_FID_ATAID0, sATAID0File);
     }
 
     /*
