@@ -1,5 +1,4 @@
 #include <loadcore.h>
-#include <stdio.h>
 #include <string.h>
 #include <atahw.h>
 
@@ -36,15 +35,20 @@ ata_devinfo_t *ata_get_devinfo(int device)
 {
     M_DEBUG("(%d)\n", device);
 
-    if (device == 0 && dev[0].exists == 0) {
+    if (dev[device].exists == 0) {
         // Initialize
-        u32 size = fhi_size(FHI_FID_ATA0);
+        u32 size = 0;
+        if (device == 0)
+            size = fhi_size(FHI_FID_ATA0);
+        else if (device == 1)
+            size = fhi_size(FHI_FID_ATA1);
+
         if (size > 0) {
             M_DEBUG("(%d) size = %d sectors\n", device, size);
-            dev[0].exists          = 1;
-            dev[0].has_packet      = 0;
-            dev[0].total_sectors   = size;
-            dev[0].security_status = ATA_F_SEC_ENABLED | ATA_F_SEC_LOCKED;
+            dev[device].exists          = 1;
+            dev[device].has_packet      = 0;
+            dev[device].total_sectors   = size;
+            dev[device].security_status = ATA_F_SEC_ENABLED | ATA_F_SEC_LOCKED;
         }
     }
 
@@ -98,10 +102,10 @@ int ata_device_sector_io(int device, void *buf, u32 lba, u32 nsectors, int dir)
 /* Export 10 */
 int ata_device_sce_sec_set_password(int device, void *password)
 {
-    int i;
+    u8 i;
 
     M_DEBUG("(%d, password)\n", device);
-    for (i=0; i<8; i++) {
+    for (i = 0; i < 8; i++) {
         M_DEBUG("- 0x%08x\n", ((u32*)password)[i]);
     }
 
@@ -111,10 +115,10 @@ int ata_device_sce_sec_set_password(int device, void *password)
 /* Export 11 */
 int ata_device_sce_sec_unlock(int device, void *password)
 {
-    int i;
+    u8 i;
 
     M_DEBUG("(%d, password)\n", device);
-    for (i=0; i<8; i++) {
+    for (i = 0; i < 8; i++) {
         M_DEBUG("- 0x%08x\n", ((u32*)password)[i]);
     }
 
@@ -140,11 +144,10 @@ int ata_device_idle(int device, int period)
 /* Export 14 */
 int ata_device_sce_identify_drive(int device, void *data)
 {
-    M_DEBUG("(%d)\n", device);
-
     // return zero filled response even if hdd id is not present
     memset(data, 0, 512);
     fhi_read(FHI_FID_ATA0ID, data, 0, 1);
+    M_DEBUG("(%d, 0x%x)\n", device, data);
 
     return 0;
 }

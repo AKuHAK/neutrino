@@ -5,9 +5,9 @@
 
 #include <fhi.h>
 #include <loadcore.h>
+#ifdef DEBUG
 #include <stdio.h>
+#endif
 #include <sysclib.h>
-#include <thbase.h>
-#include <thevent.h>
 
 #endif
