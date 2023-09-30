@@ -17,14 +17,14 @@
 /* Replacement for MCMAN's library function #62 */
 int hookMcman62()
 {
-    register char *ptr;
+    char *ptr;
 
     /* checking if the memory block had been allocated */
     if (pFastBuf == NULL) {
         /* allocating memory for Fast I/O buffer, RPC buffer and RPC client data structure */
         ptr = (char *)_SysAlloc((FIO_ALLOC_SIZE + 0xFF) & ~(u64)0xFF);
         if (ptr == NULL) {
-            DPRINTF("Not enough memory for FastIO support.\n");
+            M_DEBUG("Not enough memory for FastIO support.\n");
             return 0;
         }
 
@@ -43,7 +43,7 @@ int hookMcman62()
             _SysFree(ptr);
         }
 
-        DPRINTF("libmc RPC bind error.\n");
+        M_DEBUG("libmc RPC bind error.\n");
         return 0;
     }
 
@@ -55,14 +55,14 @@ int hookMcman63(int fd, u32 eeaddr, int nbyte)
 {
     int oldstate;
     SifDmaTransfer_t sdd;
-    register int rlen;
-    register int rval;
-    register int size;
-    register u32 id __attribute__((unused));
-    register char *rpcbuf, *fiobuf;
+    int rlen;
+    int rval;
+    int size;
+    u32 id __attribute__((unused));
+    char *rpcbuf, *fiobuf;
     SifRpcClientData_t *cldata;
 
-    // DPRINTF("sceMcReadFast(%d, 0x%X, 0x%X)\n", fd, eeaddr, nbyte);
+    // M_DEBUG("sceMcReadFast(%d, 0x%X, 0x%X)\n", fd, eeaddr, nbyte);
 
     cldata = pClientData;
     rpcbuf = (char *)pFastRpcBuf;
@@ -100,13 +100,13 @@ int hookMcman63(int fd, u32 eeaddr, int nbyte)
 int hookMcman68(int fd, u32 eeaddr, int nbyte)
 {
     SifRpcReceiveData_t od;
-    register int rval;
-    register int size;
-    register int wlen;
-    register u32 ea;
-    register char *fiobuf;
+    int rval;
+    int size;
+    int wlen;
+    u32 ea;
+    char *fiobuf;
 
-    // DPRINTF("sceMcWriteFast(%d, 0x%X, 0x%X)\n", fd, eeaddr, nbyte);
+    // M_DEBUG("sceMcWriteFast(%d, 0x%X, 0x%X)\n", fd, eeaddr, nbyte);
 
     fiobuf = (char *)pFastBuf;
 
@@ -126,7 +126,7 @@ int hookMcman68(int fd, u32 eeaddr, int nbyte)
         /* writing unaligned data to a file */
         rval = pMcWrite(fd, &fiobuf[rval], size);
         if (rval < 0) {
-            DPRINTF("sceMcWrite error %d\n", rval);
+            M_DEBUG("sceMcWrite error %d\n", rval);
             return rval;
         }
 
@@ -143,7 +143,7 @@ int hookMcman68(int fd, u32 eeaddr, int nbyte)
         /* writing data to a file */
         rval = pMcWrite(fd, fiobuf, size);
         if (rval < 0) {
-            DPRINTF("sceMcWrite error %d\n", rval);
+            M_DEBUG("sceMcWrite error %d\n", rval);
             return rval;
         }
     }

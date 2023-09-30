@@ -8,38 +8,68 @@
 */
 
 #include <iopcontrol.h>
+#include <loadfile.h>
 
 #include "ee_core.h"
 #include "iopmgr.h"
 #include "modules.h"
-#include "modmgr.h"
 #include "util.h"
 #include "syshook.h"
 
 extern int _iop_reboot_count;
 extern void *ModStorageStart;
 
-static void ResetIopSpecial(const char *args, unsigned int arglen)
+/*----------------------------------------------------------------*/
+/* Reset IOP to include our modules.                              */
+/*----------------------------------------------------------------*/
+int New_Reset_Iop(const char *arg, int arglen)
 {
     int i;
     void *pIOP_buffer;
     const void *IOPRP_img, *imgdrv_irx;
-    unsigned int length_rounded, CommandLen, size_IOPRP_img, size_imgdrv_irx;
-    char command[RESET_ARG_MAX + 1];
+    unsigned int length_rounded, udnl_cmdlen, size_IOPRP_img, size_imgdrv_irx;
+    char udnl_mod[10];
+    char udnl_cmd[RESET_ARG_MAX + 1];
     irxtab_t *irxtable = (irxtab_t *)ModStorageStart;
     static int imgdrv_offset = 0;
 
+    DPRINTF("New_Reset_Iop start!\n");
+    if (EnableDebug)
+        GS_BGCOLOUR = 0xFF00FF; // Purple
+
+    iop_reboot_count++;
+
+    SifInitRpc(0);
+    SifInitIopHeap();
+    SifLoadFileInit();
+    sbv_patch_enable_lmb();
+
+    udnl_cmdlen = 0;
     if (arglen > 0) {
-        strncpy(command, args, arglen);
-        command[arglen] = '\0'; /* In a normal IOP reset process, the IOP reset command line will be NULL-terminated properly somewhere.
-                        Since we're now taking things into our own hands, NULL terminate it here.
-                        Some games like SOCOM3 will use a command line that isn't NULL terminated, resulting in things like "cdrom0:\RUN\IRX\DNAS300.IMGG;1" */
-        _strcpy(&command[arglen + 1], "img0:");
-        CommandLen = arglen + 6;
+        // Copy: rom0:UDNL or rom1:UDNL
+        // - Are these the only update modules? Always 9 chars long?
+        strncpy(udnl_mod, &arg[0], 10);
+        // Make sure it's 0 terminated
+        udnl_mod[9] = '\0';
+
+        if (arglen > 10) {
+            // Copy: arguments
+            udnl_cmdlen = arglen-10; // length, including terminating 0
+            strncpy(udnl_cmd, &arg[10], udnl_cmdlen);
+
+            // Fix if 0 is not included
+            if (udnl_cmd[udnl_cmdlen-1] != 0) {
+                udnl_cmd[udnl_cmdlen] = '\0';
+                udnl_cmdlen++;
+            }
+        }
     } else {
-        _strcpy(command, "img0:");
-        CommandLen = 5;
+        strncpy(udnl_mod, "rom0:UDNL", 10);
     }
+
+    // Add our own IOPRP image
+    strncpy(&udnl_cmd[udnl_cmdlen], "img0:", 6);
+    udnl_cmdlen += 6;
 
     // FIXED modules:
     // 0 = IOPRP image
@@ -64,7 +94,7 @@ static void ResetIopSpecial(const char *args, unsigned int arglen)
     *(u32   *)(UNCACHED_SEG(&((unsigned char *)imgdrv_irx)[imgdrv_offset+8])) = size_IOPRP_img;
 
     // Load patched imgdrv.irx
-    LoadMemModule(0, imgdrv_irx, size_imgdrv_irx, 0, NULL);
+    SifExecModuleBuffer((void *)imgdrv_irx, size_imgdrv_irx, 0, NULL, NULL);
 
     // Trigger IOP reboot with update
     DIntr();
@@ -72,7 +102,9 @@ static void ResetIopSpecial(const char *args, unsigned int arglen)
     Old_SifSetReg(SIF_REG_SMFLAG, SIF_STAT_BOOTEND);
     ee_kmode_exit();
     EIntr();
-    LoadModule("rom0:UDNL", SIF_RPC_M_NOWAIT, CommandLen, command);
+
+    _SifLoadModule(udnl_mod, udnl_cmdlen, udnl_cmd, NULL, LF_F_MOD_LOAD, 1);
+
     DIntr();
     ee_kmode_enter();
     Old_SifSetReg(SIF_REG_SMFLAG, SIF_STAT_SIFINIT);
@@ -82,7 +114,7 @@ static void ResetIopSpecial(const char *args, unsigned int arglen)
     ee_kmode_exit();
     EIntr();
 
-    LoadFileExit(); // OPL's integrated LOADFILE RPC does not automatically unbind itself after IOP resets.
+    SifLoadFileExit(); // OPL's integrated LOADFILE RPC does not automatically unbind itself after IOP resets.
 
     _iop_reboot_count++; // increment reboot counter to allow RPC clients to detect unbinding!
 
@@ -92,49 +124,22 @@ static void ResetIopSpecial(const char *args, unsigned int arglen)
 
     SifInitRpc(0);
     SifInitIopHeap();
-    LoadFileInit();
+    SifLoadFileInit();
     sbv_patch_enable_lmb();
 
     DPRINTF("Loading extra IOP modules...\n");
     // Skip the first 2 modules (IOPRP.IMG and imgdrv.irx)
     for (i = 2; i < irxtable->count; i++) {
         irxptr_t p = irxtable->modules[i];
-        LoadMemModule(0, p.ptr, p.size, p.arg_len, p.args);
+        SifExecModuleBuffer((void *)p.ptr, p.size, p.arg_len, p.args, NULL);
     }
-}
 
-/*----------------------------------------------------------------*/
-/* Reset IOP to include our modules.                              */
-/*----------------------------------------------------------------*/
-int New_Reset_Iop(const char *arg, int arglen)
-{
-    DPRINTF("New_Reset_Iop start!\n");
-    if (EnableDebug)
-        GS_BGCOLOUR = 0xFF00FF; // Purple
-
-    iop_reboot_count++;
-
-    // Fast IOP reboot:
-    // - 1 IOP reboot to desired state
-    SifInitRpc(0);
-    SifInitIopHeap();
-    LoadFileInit();
-    sbv_patch_enable_lmb();
-
-    if (arglen > 0) {
-        // Reset with IOPRP image
-        ResetIopSpecial(&arg[10], arglen - 10);
-    }
-    else {
-        // Reset without IOPRP image
-        ResetIopSpecial(NULL, 0);
-    }
     if (EnableDebug)
         GS_BGCOLOUR = 0x00FFFF; // Yellow
 
     DPRINTF("Exiting services...\n");
     SifExitIopHeap();
-    LoadFileExit();
+    SifLoadFileExit();
     SifExitRpc();
 
     DPRINTF("New_Reset_Iop complete!\n");
