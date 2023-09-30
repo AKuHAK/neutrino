@@ -273,7 +273,7 @@ static int Hook_ReferModuleStatus(int id, ModuleStatus *status)
 //--------------------------------------------------------------
 int _start(int argc, char **argv)
 {
-    int i;
+    u8 i;
 
     // Change string index to string pointers
     M_DEBUG("Fake module list:\n");

@@ -1,12 +1,13 @@
 #include <errno.h>
 #include <iomanX.h>
 #include <limits.h>
+#ifdef DEBUG
 #include <stdio.h>
+#endif
 #include <thsemap.h>
 #include <loadcore.h>
 #include <sysclib.h>
 
-#include <irx.h>
 #include "mprintf.h"
 
 #define MODNAME "isofs"
@@ -84,7 +85,7 @@ static int IsofsInit(iop_device_t *device)
 
 static FHANDLE *cdvdman_getfilefreeslot(void)
 {
-    int i;
+    u8 i;
     FHANDLE *fh;
 
     for (i = 0; i < MAX_FDHANDLES; i++) {

@@ -3,9 +3,11 @@
 
 #include "irx.h"
 
-#include "intrman.h"
-#include "loadcore.h"
-#include "stdio.h"
-#include "sysclib.h"
+#include <intrman.h>
+#include <loadcore.h>
+#ifdef DEBUG
+#include <stdio.h>
+#endif
+#include <sysclib.h>
 
 #endif
