@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <sysclib.h>
 #include <loadcore.h>
 #include <ioman.h>
@@ -36,21 +35,23 @@ iop_device_ops_t my_device_ops =
     {
         dummy_fs, // init
         dummy_fs, // deinit
-        NULL,     // dummy_fs,//format
-        dummy_fs, // open_fs,//open
-        dummy_fs, // close_fs,//close
+        NULL,     // dummy_fs, // format
+        dummy_fs, // open_fs,  // open
+        dummy_fs, // close_fs, // close
         read_fs,  // read
-        NULL,     // dummy_fs,//write
+        NULL,     // dummy_fs, // write
         lseek_fs, // lseek
-                  /*dummy_fs,//ioctl
-    dummy_fs,//remove
-    dummy_fs,//mkdir
-    dummy_fs,//rmdir
-    dummy_fs,//dopen
-    dummy_fs,//dclose
-    dummy_fs,//dread
-    dummy_fs,//getstat
-    dummy_fs,//chstat*/
+        /*
+        dummy_fs, // ioctl
+        dummy_fs, // remove
+        dummy_fs, // mkdir
+        dummy_fs, // rmdir
+        dummy_fs, // dopen
+        dummy_fs, // dclose
+        dummy_fs, // dread
+        dummy_fs, // getstat
+        dummy_fs, // chstat
+        */
 };
 
 const char name[] = "img";

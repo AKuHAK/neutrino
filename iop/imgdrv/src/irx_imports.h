@@ -17,9 +17,7 @@
 #include "irx.h"
 
 /* Please keep these in alphabetical order!  */
-#include "ioman.h"
-#include "stdio.h"
-#include "sysclib.h"
-#include "thbase.h"
+#include <ioman.h>
+#include <sysclib.h>
 
 #endif /* IOP_IRX_IMPORTS_H */
