@@ -109,25 +109,24 @@ GAME = 'DVD/Ratchet Clank - Up Your Arsenal (U).iso'
 #GAME = "DVD/Splashdown (E).iso" # IOP memory allocation issue: allocates too little for the DVD reads that follow (fixed!)
 
 # Example arguments
-#-bsd=udpbd -dvd=mass:$(GAME)
-#-bsd=udpbd -dvd=mass:$(GAME) -mc0=mass:VMC/mymc.bin
-#-bsd=udpbd -dvd=mass:$(GAME) -ata0=mass:$(ATA0)
-#-bsd=udpbd -dvd=mass:$(GAME) -ata0=mass:$(ATA0) -mc0=mass:VMC/mymc.bin
-#-bsd=udpbd -dvd=mass:"DVD/Splinter Cell (E).iso" -elf="cdrom0:\\LOADER.PS2;1" --b 0_0_2 -wantload -ll -diskimage -restart -l=1 -v=13117
+#-bsd=udpbd -media=mass:$(GAME)
+#-bsd=udpbd -media=mass:$(GAME) -mc0=mass:VMC/mymc.bin
+#-bsd=udpbd -media=mass:$(GAME) -ata0=mass:$(ATA0)
+#-bsd=udpbd -media=mass:$(GAME) -ata0=mass:$(ATA0) -mc0=mass:VMC/mymc.bin
+#-bsd=udpbd -media=mass:"DVD/Splinter Cell (E).iso" -elf="cdrom0:\\LOADER.PS2;1" --b 0_0_2 -wantload -ll -diskimage -restart -l=1 -v=13117
 
 # Exmaple arguments (not working yet)
 #-bsd=udpbd -mc0=mass:VMC/mymc.bin -elf=rom0:OSDSYS --b SkipMc SkipHdd BootBrowser
 
 run: all copy
-	ps2client -h 192.168.1.10 execee host:$(EE_BIN_PACKED) -bsd=udpbd -dvd=mass:$(GAME)
+	ps2client -h 192.168.1.10 execee host:$(EE_BIN_PACKED) -bsd=udpbd -media=mass:$(GAME)
 
 sim: all copy
 	flatpak --filesystem=host run net.pcsx2.PCSX2 $(PWD)/ee/loader/$(EE_BIN_PACKED)
 
 clean:
-	rm -rf $(EE_OBJS) *_irx.o *_elf.o
-	rm -rf $(EE_BIN) $(EE_BIN_PACKED)
-	rm -rf modules
+	rm -rf modules/
+	rm -rf $(EE_OBJS_DIR) $(EE_BIN) $(EE_BIN_PACKED) $(EE_BIN_MAPFILE)
 
 copy:
 	rm -rf modules

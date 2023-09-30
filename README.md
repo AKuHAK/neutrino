@@ -53,7 +53,7 @@ Options:
                     - udpbd
                     - ilink
 
-  -dvd=<mode>       DVD emulation mode, supported are:
+  -media=<mode>     DVD emulation mode, supported are:
                     - no (default)
                     - esr
                     - <file>
@@ -97,8 +97,8 @@ Options:
   --b               Break, all following parameters are passed to the ELF
 
 Usage examples:
-  neutrino.elf -bsd=usb -dvd=mass:path/to/filename.iso
+  neutrino.elf -bsd=usb -media=mass:path/to/filename.iso
   neutrino.elf
-  neutrino.elf -dvd=esr
+  neutrino.elf -media=esr
   neutrino.elf -elf=rom0:OSDSYS --b SkipMc SkipHdd BootBrowser
 ```

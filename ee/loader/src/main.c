@@ -65,7 +65,7 @@ void print_usage()
     printf("                    - udpbd\n");
     printf("                    - ilink\n");
     printf("\n");
-    printf("  -dvd=<mode>       DVD emulation mode, supported are:\n");
+    printf("  -media=<mode>     DVD emulation mode, supported are:\n");
     printf("                    - no (default)\n");
     printf("                    - esr\n");
     printf("                    - <file>\n");
@@ -109,9 +109,9 @@ void print_usage()
     printf("  --b               Break, all following parameters are passed to the ELF\n");
     printf("\n");
     printf("Usage examples:\n");
-    printf("  neutrino.elf -bsd=usb -dvd=mass:path/to/filename.iso\n");
+    printf("  neutrino.elf -bsd=usb -media=mass:path/to/filename.iso\n");
     printf("  neutrino.elf\n");
-    printf("  neutrino.elf -dvd=esr\n");
+    printf("  neutrino.elf -media=esr\n");
     printf("  neutrino.elf -elf=rom0:OSDSYS --b SkipMc SkipHdd BootBrowser\n");
 }
 
@@ -785,8 +785,8 @@ int main(int argc, char *argv[])
     printf("--------------------------------\n");
 
     const char *sBSD = "no";
-    const char *sDVDMode = "no";
-    const char *sDVDFile = NULL;
+    const char *sMediaMode = "no";
+    const char *sMediaFile = NULL;
     const char *sATAMode = "no";
     const char *sATA0File = NULL;
     const char *sATA0IDFile = NULL;
@@ -802,12 +802,12 @@ int main(int argc, char *argv[])
     enum SCECdvdMediaType eMediaType = SCECdNODISC;
     bool bEnableDebugColors = false;
     bool bEnablePS2Logo = false;
-    for (i=1; i<argc; i++) {
+    for (i = 1; i < argc; i++) {
         //printf("argv[%d] = %s\n", i, argv[i]);
         if (!strncmp(argv[i], "-bsd=", 5))
             sBSD = &argv[i][5];
-        else if (!strncmp(argv[i], "-dvd=", 5))
-            sDVDMode = &argv[i][5];
+        else if (!strncmp(argv[i], "-media=", 7))
+            sMediaMode = &argv[i][7];
         else if (!strncmp(argv[i], "-ata0=", 6))
             sATA0File = &argv[i][6];
         else if (!strncmp(argv[i], "-ata0id=", 8))
@@ -844,9 +844,9 @@ int main(int argc, char *argv[])
         iELFArgcStart = argc;
 
     // Check for "file" mode of dvd emulation
-    if (strstr(sDVDMode, ":")) {
-        sDVDFile = sDVDMode;
-        sDVDMode = "file";
+    if (strstr(sMediaMode, ":")) {
+        sMediaFile = sMediaMode;
+        sMediaMode = "file";
     }
 
     // Check for "file" mode of ata emulation
@@ -923,10 +923,10 @@ int main(int argc, char *argv[])
     /*
      * Load CD/DVD emulation driver settings
      */
-    if (!strcmp(sDVDMode, "no")) {
+    if (!strcmp(sMediaMode, "no")) {
         // Load nothing
-    } else if (load_driver("emu-dvd", sDVDMode) < 0) {
-        printf("ERROR: dvd driver %s failed\n", sDVDMode);
+    } else if (load_driver("emu-dvd", sMediaMode) < 0) {
+        printf("ERROR: dvd driver %s failed\n", sMediaMode);
         return -1;
     }
 
@@ -1017,7 +1017,7 @@ int main(int argc, char *argv[])
     /*
      * Enable DVD emulation
      */
-    if (sDVDFile != NULL) {
+    if (sMediaFile != NULL) {
         uint32_t layer1_lba_start = 0;
         int fd_iso = 0;
 
@@ -1036,9 +1036,9 @@ int main(int argc, char *argv[])
          * Check if file exists
          * Give low level drivers 10s to start
          */
-        printf("Loading %s...\n", sDVDFile);
+        printf("Loading %s...\n", sMediaFile);
         for (i = 0; i < 1000; i++) {
-            fd_iso = open(sDVDFile, O_RDONLY);
+            fd_iso = open(sMediaFile, O_RDONLY);
             if (fd_iso >= 0)
                 break;
 
@@ -1046,20 +1046,127 @@ int main(int argc, char *argv[])
             nopdelay();
         }
         if (fd_iso < 0) {
-            printf("Unable to open %s\n", sDVDFile);
+            printf("Unable to open %s\n", sMediaFile);
             return -1;
         }
+
+       /*
+        * Check and parse cue file
+        */
+        char buffer[6];
+        if (read(fd_iso, buffer, sizeof(buffer)) != sizeof(buffer)) {
+            printf("Unable to read file\n");
+            close(fd_iso);
+            return -1;
+        }
+
+        // Check if the buffer equals "FILE" - currently assume that "FILE" is first keyword in the cue file
+        if (memcmp(buffer, "FILE", 4) == 0) {
+            char line[MAX_FILENAME];
+            lseek(fd_iso, 0, SEEK_SET);
+            if (read(fd_iso, line, sizeof(line)) == -1) {
+                printf("Error reading file\n");
+                close(fd_iso);
+                return -1;
+            }
+
+            // Find the position of the first double quote
+            char *openQuote = strchr(line, '"');
+            if (openQuote == NULL) {
+                printf("No opening quote found\n");
+                close(fd_iso);
+                return -1;
+            }
+
+            // Find the position of the second double quote
+            char *closeQuote = strchr(openQuote + 1, '"');
+            while (closeQuote != NULL && closeQuote[-1] == ' ') {
+                // Skip over consecutive spaces before the closing quote
+                closeQuote = strchr(closeQuote + 1, '"');
+            }
+
+            if (closeQuote == NULL) {
+                printf("No closing quote found\n");
+                close(fd_iso);
+                return -1;
+            }
+
+            // Extract the filename between the quotes
+            size_t filenameLen = closeQuote - openQuote - 1;
+            char extractedFilename[MAX_FILENAME];
+            strncpy(extractedFilename, openQuote + 1, filenameLen);
+            extractedFilename[filenameLen] = '\0';  // Null-terminate the extracted filename
+
+            // Extract the folder path from sMediaFile
+            char folderPath[MAX_FILENAME];
+            strncpy(folderPath, sMediaFile, sizeof(folderPath));
+            char *lastSlash = strrchr(folderPath, '/');
+            if (lastSlash != NULL) {
+                *lastSlash = '\0';  // Null-terminate to get the folder path
+            }
+
+            // Concatenate the folder path and filename to get the bin file path
+            char binFilePath[MAX_FILENAME * 2];
+            snprintf(binFilePath, sizeof(binFilePath), "%s/%s", folderPath, extractedFilename);
+
+            // Replace sMediaFile with the new bin file name
+            sMediaFile = strdup(binFilePath);
+
+            // Search for the first occurrence of the keyword "TRACK"
+            int offset = 0;
+            lseek(fd_iso, closeQuote - line + 1, SEEK_SET);
+            while (read(fd_iso, line, sizeof(line)) > 0) {
+                offset += sizeof(line);
+                if (strstr(line, "TRACK") != NULL) {
+                    break;
+                }
+            }
+
+            // Move to the offset after "TRACK" and check for the specified keywords
+            lseek(fd_iso, offset + 4, SEEK_SET);
+            if (read(fd_iso, line, sizeof(line)) == -1) {
+                printf("Error reading file\n");
+                close(fd_iso);
+                return -1;
+            }
+
+            // Close the cue file
+            close(fd_iso);
+
+            // Check for the three keywords
+            if (strstr(line, "MODE2/2352") != NULL) {
+                printf("Found keyword: MODE2/2352, sector size = 2352, not yet supported\n");
+                return -1;
+            }
+            if (strstr(line, "AUDIO") != NULL) {
+                printf("Found keyword: AUDIO, sector size = 2352, not yet supported\n");
+                return -1;
+            }
+            if (strstr(line, "MODE1/2048") != NULL) {
+                printf("Found keyword: MODE1/2048, sector size = 2048\n");
+            }
+
+            // Open the bin file with the same descriptor
+            printf("Loading bin file: %s...\n", sMediaFile);
+            fd_iso = open(sMediaFile, O_RDONLY);
+            if (fd_iso < 0) {
+                printf("Unable to open %s\n", sMediaFile);
+                return -1;
+            }
+        }
+
         // Get ISO file size
         iso_size = lseek64(fd_iso, 0, SEEK_END);
-        char buffer[6];
         // Validate this is an ISO
         lseek64(fd_iso, 16 * 2048, SEEK_SET);
         if (read(fd_iso, buffer, sizeof(buffer)) != sizeof(buffer)) {
             printf("Unable to read ISO\n");
+            close(fd_iso);
             return -1;
         }
         if ((buffer[0x00] != 1) || (strncmp(&buffer[0x01], "CD001", 5))) {
             printf("File is not a valid ISO\n");
+            close(fd_iso);
             return -1;
         }
         // Get ISO layer0 size
@@ -1067,6 +1174,7 @@ int main(int argc, char *argv[])
         lseek64(fd_iso, 16 * 2048 + 80, SEEK_SET);
         if (read(fd_iso, &layer0_lba_size, sizeof(layer0_lba_size)) != sizeof(layer0_lba_size)) {
             printf("ISO invalid\n");
+            close(fd_iso);
             return -1;
         }
         // Try to get ISO layer1 size
@@ -1093,8 +1201,10 @@ int main(int argc, char *argv[])
         }
         printf("- media = %s\n", sMT);
 
-        if (fhi_bdm_add_file_by_fd(set_fhi_bdm, FHI_FID_CDVD, fd_iso) < 0)
+        if (fhi_bdm_add_file_by_fd(set_fhi_bdm, FHI_FID_CDVD, fd_iso) < 0){
+            close(fd_iso);
             return -1;
+        }
         close(fd_iso);
 
         set_cdvdman->media = eMediaType;
@@ -1136,12 +1246,12 @@ int main(int argc, char *argv[])
      * Figure out the the elf file to start automatically from the SYSTEM.CNF
      */
     if (strcmp(sELFFile, "auto") == 0) {
-        if (sDVDFile != NULL) {
+        if (sMediaFile != NULL) {
             /*
             * Mount as ISO so we can get ELF name to boot
             */
-            if (fileXioMount("iso:", sDVDFile, FIO_MT_RDONLY) < 0) {
-                printf("ERROR: Unable to mount %s as iso\n", sDVDFile);
+            if (fileXioMount("iso:", sMediaFile, FIO_MT_RDONLY) < 0) {
+                printf("ERROR: Unable to mount %s as iso\n", sMediaFile);
                 return -1;
             }
             fd_system_cnf = open("iso:\\SYSTEM.CNF;1", O_RDONLY);
@@ -1172,7 +1282,7 @@ int main(int argc, char *argv[])
         sGameID[11] = '\0';
         close(fd_system_cnf);
 
-        if (sDVDFile != NULL)
+        if (sMediaFile != NULL)
             fileXioUmount("iso:");
     }
     else {
@@ -1190,7 +1300,7 @@ int main(int argc, char *argv[])
     /*
      * Set CDVDMAN compatibility
      */
-    if (sDVDFile != NULL) {
+    if (sMediaFile != NULL) {
         if (iCompat & COMPAT_MODE_1)
             set_cdvdman->flags |= IOPCORE_COMPAT_ACCU_READS;
         if (iCompat & COMPAT_MODE_2)
@@ -1355,7 +1465,7 @@ int main(int argc, char *argv[])
     //printf("IOPRP.img (old):\n");
     //print_romdir(ioprp_img_base.romdir);
     unsigned int ioprp_size;
-    if (sDVDFile != NULL)
+    if (sMediaFile != NULL)
         ioprp_size = patch_IOPRP_image((struct romdir_entry *)irxptr, ioprp_img_full.romdir);
     else
         ioprp_size = patch_IOPRP_image((struct romdir_entry *)irxptr, ioprp_img_dvd.romdir);
