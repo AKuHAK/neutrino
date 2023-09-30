@@ -17,10 +17,12 @@
 #include "irx.h"
 
 /* Please keep these in alphabetical order!  */
-#include "cdvdman.h"
-#include "loadcore.h"
-#include "stdio.h"
-#include "sysmem.h"
-#include "thbase.h"
+#include <cdvdman.h>
+#include <loadcore.h>
+#ifdef DEBUG
+#include <stdio.h>
+#endif
+#include <sysmem.h>
+#include <thbase.h>
 
 #endif /* IOP_IRX_IMPORTS_H */

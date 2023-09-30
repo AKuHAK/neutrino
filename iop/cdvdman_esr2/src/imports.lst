@@ -27,6 +27,5 @@ stdio_IMPORTS_end
 #endif
 
 sysclib_IMPORTS_start
-I_memset
 I_memmove
 sysclib_IMPORTS_end

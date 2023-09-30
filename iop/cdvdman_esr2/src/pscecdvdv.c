@@ -1,6 +1,6 @@
-#include <types.h>
-#include <thbase.h>
+#ifdef DEBUG
 #include <stdio.h>
+#endif
 #include <sysclib.h>
 #include <intrman.h>
 #include <loadcore.h>

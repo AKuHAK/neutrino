@@ -4,7 +4,7 @@
 iop_library_t *ioplib_getByName(const char *name)
 {
     iop_library_t *libptr;
-    int i;
+    u8 i;
 
     // Get first loaded library
     libptr = GetLoadcoreInternalData()->let_next;

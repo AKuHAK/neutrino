@@ -1,10 +1,11 @@
+#ifdef DEBUG
 #include <stdio.h>
+#endif
 #include <thbase.h>
 #include <loadcore.h>
 #include <cdvdman.h>
 #include <sysmem.h>
 #include "scecdvdv.h"
-#include "libcdvd-common.h"
 #include "mprintf.h"
 
 extern struct irx_export_table _exp_esr_sl;
