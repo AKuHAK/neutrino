@@ -83,14 +83,14 @@ static void set_args_compat(const char *arg)
 
 static int eecoreInit(int argc, char **argv)
 {
-    int i;
+    u8 i;
 
     SifInitRpc(0);
 
     DINIT();
     DPRINTF("EE core start!\n");
 
-    for (i=0; i<argc; i++) {
+    for (i = 0; i < argc; i++) {
         if (!_strncmp(argv[i], "-drv=", 5))
             set_args_drv(&argv[i][5]);
         if (!_strncmp(argv[i], "-v=", 3))
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
         // LoadExecPS2 is patched so instead of running rom0:EELOAD, this ee_core is started
 
         // Ignore argv[0], as it contains the name of this module ("EELOAD")
-        int i;
+        u8 i;
 
         argv++;
         argc--;

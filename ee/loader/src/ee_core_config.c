@@ -119,9 +119,10 @@ bool eecc_valid(struct SEECoreConfig *eecc)
 
 void eecc_print(struct SEECoreConfig *eecc)
 {
+    u8 i;
     eecc_argv(eecc);
 
-    for (int i = 0; i < eecc->_argc; i++) {
+    for (i = 0; i < eecc->_argc; i++) {
         printf("[%d] %s\n", i, eecc->_argv[i]);
     }
 }
@@ -133,7 +134,7 @@ int eecc_argc(struct SEECoreConfig *eecc)
 
 const char **eecc_argv(struct SEECoreConfig *eecc)
 {
-    int i;
+    u8 i;
     char *psConfig = eecc->_sConfig;
     size_t maxStrLen = sizeof(eecc->_sConfig);
 

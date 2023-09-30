@@ -178,7 +178,7 @@ void ResetDeckardXParams()
         close(fd);
 
         // Reset all the params to default.
-        int i;
+        u8 i;
         for (i = 0; i < 0x12; i++) {
             sprintf(&params[12], "0X%02X", i);
             params[16] = 0;

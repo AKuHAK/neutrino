@@ -33,8 +33,8 @@ static void SetupCheats()
 {
     code_t code;
 
-    int i, j, k, nextCodeCanBeHook;
-    i = 0;
+    int j, k, nextCodeCanBeHook;
+    u32 i = 0;
     j = 0;
     k = 0;
     nextCodeCanBeHook = 1;

@@ -1,11 +1,10 @@
 #include "ioplib.h"
 #include <intrman.h>
-#include <stdint.h>
 
 iop_library_t *ioplib_getByName(const char *name)
 {
     iop_library_t *libptr;
-    int i;
+    u8 i;
 
     // Get first loaded library
     libptr = GetLoadcoreInternalData()->let_next;
@@ -76,7 +75,7 @@ void ioplib_relinkExports(iop_library_t *lib)
         // go through each import in the table
         for (stub = (struct irx_import_stub *)table->stubs; stub->jump != 0; stub++) {
             // patch the stub to jump to the address specified in the library export table for "fno"
-            stub->jump = 0x08000000 | (((uint32_t)lib->exports[stub->fno] << 4) >> 6);
+            stub->jump = 0x08000000 | (((u32)lib->exports[stub->fno] << 4) >> 6);
         }
     }
 }

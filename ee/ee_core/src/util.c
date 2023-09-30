@@ -43,7 +43,7 @@ int _strncmp(const char *s1, const char *s2, int length)
 /* Do not link to strcmp() from libc */
 int _strcmp(const char *s1, const char *s2)
 {
-    int i = 0;
+    u32 i = 0;
 
     while ((s1[i] != 0) && (s1[i] == s2[i]))
         i++;
@@ -339,7 +339,7 @@ void WipeUserMemory(void *start, void *end)
 /*----------------------------------------------------------------------------------------*/
 void delay(int count)
 {
-    int i, ret;
+    unsigned int i, ret;
 
     for (i = 0; i < count; i++) {
         ret = 0x01000000;

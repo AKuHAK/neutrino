@@ -24,7 +24,7 @@ extern void *ModStorageStart;
 /*----------------------------------------------------------------*/
 int New_Reset_Iop(const char *arg, int arglen)
 {
-    int i;
+    u32 i;
     void *pIOP_buffer;
     const void *IOPRP_img, *imgdrv_irx;
     unsigned int length_rounded, udnl_cmdlen, size_IOPRP_img, size_imgdrv_irx;
