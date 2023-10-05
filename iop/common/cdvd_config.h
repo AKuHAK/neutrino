@@ -17,6 +17,7 @@ struct cdvdman_settings_common
     u32 magic;
 
     u8 media;
+    u16 sector_size;
     u16 flags;
     u32 layer1_start;
 

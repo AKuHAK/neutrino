@@ -800,6 +800,7 @@ int main(int argc, char *argv[])
     const char *sCompat = NULL;
     u32 iCompat = 0;
     enum SCECdvdMediaType eMediaType = SCECdNODISC;
+    u16 eSectorSize = 2048;
     bool bEnableDebugColors = false;
     bool bEnablePS2Logo = false;
     for (i = 1; i < argc; i++) {
@@ -1135,16 +1136,21 @@ int main(int argc, char *argv[])
 
             // Check for the three keywords
             if (strstr(line, "MODE2/2352") != NULL) {
-                printf("Found keyword: MODE2/2352, sector size = 2352, not yet supported\n");
-                return -1;
+                eMediaType = SCECdPS2CD;
+                eSectorSize = 2352;
+                printf("Found keyword: MODE2/2352, ");
             }
             if (strstr(line, "AUDIO") != NULL) {
-                printf("Found keyword: AUDIO, sector size = 2352, not yet supported\n");
-                return -1;
+                eMediaType = SCECdPS2CDDA;
+                eSectorSize = 2352;
+                printf("Found keyword: AUDIO, ");
             }
             if (strstr(line, "MODE1/2048") != NULL) {
-                printf("Found keyword: MODE1/2048, sector size = 2048\n");
+                eMediaType = SCECdPS2DVD;
+                eSectorSize = 2048;
+                printf("Found keyword: MODE1/2048, ");
             }
+            printf("sector size = %d\n", eSectorSize);
 
             // Open the bin file with the same descriptor
             printf("Loading bin file: %s...\n", sMediaFile);
@@ -1158,7 +1164,7 @@ int main(int argc, char *argv[])
         // Get ISO file size
         iso_size = lseek64(fd_iso, 0, SEEK_END);
         // Validate this is an ISO
-        lseek64(fd_iso, 16 * 2048, SEEK_SET);
+        lseek64(fd_iso, 16 * eSectorSize + (eSectorSize == 2048 ? 0 : 24), SEEK_SET);
         if (read(fd_iso, buffer, sizeof(buffer)) != sizeof(buffer)) {
             printf("Unable to read ISO\n");
             close(fd_iso);
@@ -1171,7 +1177,7 @@ int main(int argc, char *argv[])
         }
         // Get ISO layer0 size
         uint32_t layer0_lba_size;
-        lseek64(fd_iso, 16 * 2048 + 80, SEEK_SET);
+        lseek64(fd_iso, 16 * eSectorSize + 80 + (eSectorSize == 2048 ? 0 : 24), SEEK_SET);
         if (read(fd_iso, &layer0_lba_size, sizeof(layer0_lba_size)) != sizeof(layer0_lba_size)) {
             printf("ISO invalid\n");
             close(fd_iso);
@@ -1179,11 +1185,13 @@ int main(int argc, char *argv[])
         }
         // Try to get ISO layer1 size
         layer1_lba_start = 0;
-        lseek64(fd_iso, (uint64_t)layer0_lba_size * 2048, SEEK_SET);
-        if (read(fd_iso, buffer, sizeof(buffer)) == sizeof(buffer)) {
-            if ((buffer[0x00] == 1) && (!strncmp(&buffer[0x01], "CD001", 5))) {
-                layer1_lba_start = layer0_lba_size - 16;
-                printf("- DVD-DL detected\n");
+        if ((eMediaType == SCECdDVDV) || (eMediaType == SCECdPS2DVD)) {
+            lseek64(fd_iso, (uint64_t)layer0_lba_size * eSectorSize + (eSectorSize == 2048 ? 0 : 24), SEEK_SET);
+            if (read(fd_iso, buffer, sizeof(buffer)) == sizeof(buffer)) {
+                if ((buffer[0x00] == 1) && (!strncmp(&buffer[0x01], "CD001", 5))) {
+                    layer1_lba_start = layer0_lba_size - 16;
+                    printf("- DVD-DL detected\n");
+                }
             }
         }
         printf("- size = %dMiB\n", (int)(iso_size / (1024 * 1024)));
@@ -1208,6 +1216,7 @@ int main(int argc, char *argv[])
         close(fd_iso);
 
         set_cdvdman->media = eMediaType;
+        set_cdvdman->sector_size = eSectorSize;
         set_cdvdman->layer1_start = layer1_lba_start;
         if (sys.ilink_id_int != 0) {
             printf("Overriding i.Link ID: %2x %2x %2x %2x %2x %2x %2x %2x\n"
