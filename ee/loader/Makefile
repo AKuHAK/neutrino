@@ -23,6 +23,7 @@ all: $(EE_BIN_PACKED)
 #GAME = 'DVD/Mobile Suit Gundam - Zeonic Front (U).iso'
 #GAME = 'DVD/Inuyasha - Feudal Combat (U).iso'
 #GAME = "DVD/Disney's Treasure Planet (E).iso"
+#GAME = "CD/Pink Pong (E).iso" # BSOD on USB only. In PCSX2 with USB it works?
 
 # Games that use the HDD in one way or another
 #GAME = 'DVD/The Sims 2 (U).iso'
@@ -114,6 +115,7 @@ GAME = 'DVD/Ratchet Clank - Up Your Arsenal (U).iso'
 #-bsd=udpbd -dvd=mass:$(GAME) -ata0=mass:$(ATA0)
 #-bsd=udpbd -dvd=mass:$(GAME) -ata0=mass:$(ATA0) -mc0=mass:VMC/mymc.bin
 #-bsd=udpbd -dvd=mass:"DVD/Splinter Cell (E).iso" -elf="cdrom0:\\LOADER.PS2;1" --b 0_0_2 -wantload -ll -diskimage -restart -l=1 -v=13117
+#-bsd=ata-hdl -dvd=hdl:$(GAME)
 
 # Exmaple arguments (not working yet)
 #-bsd=udpbd -mc0=mass:VMC/mymc.bin -elf=rom0:OSDSYS --b SkipMc SkipHdd BootBrowser
@@ -139,6 +141,7 @@ copy:
 	cp ../../iop/cdvdman_esr2/irx/cdvdman_esr2.irx modules
 	cp ../../iop/fakemod/irx/fakemod.irx           modules
 	cp ../../iop/fhi_bdm/irx/fhi_bdm.irx           modules
+	cp ../../iop/hdlfs/irx/hdlfs.irx               modules
 	cp ../../iop/imgdrv/irx/imgdrv.irx             modules
 	cp ../../iop/isofs/irx/isofs.irx               modules
 	cp ../../iop/mc_emu/irx/mc_emu.irx             modules
@@ -150,6 +153,8 @@ copy:
 	cp $(PS2SDK)/iop/irx/bdm.irx                   modules
 	cp $(PS2SDK)/iop/irx/bdmfs_fatfs.irx           modules
 	cp $(PS2SDK)/iop/irx/ata_bd.irx                modules
+	cp $(PS2SDK)/iop/irx/ps2atad.irx               modules
+	cp $(PS2SDK)/iop/irx/ps2hdd-osd.irx            modules
 	cp $(PS2SDK)/iop/irx/usbd_mini.irx             modules
 	cp $(PS2SDK)/iop/irx/usbmass_bd_mini.irx       modules
 	cp $(PS2SDK)/iop/irx/mx4sio_bd_mini.irx        modules

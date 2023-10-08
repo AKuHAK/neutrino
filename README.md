@@ -23,11 +23,19 @@ The following backing storage devices are supported:
 - UDPBD
 - iLink / IEEE1394
 
-These are all BDM drivers, or "Block Devices". On all devices the following file systems are supported:
-- exFat
-- FAT32 (/16/12)
+These are all BDM drivers, or "Block Devices". On all devices the following partitioning schemes are supported:
+- MBR (Master Boot Record)
+- GPT (GUID Partition Table)
 
-During the loading phase, the exFat driver will be loaded and all files are accessable as `mass0:<file>` or `mass1:<file>`.
+And the following file systems:
+- exFat
+- FAT32
+
+During the loading phase, these drivers will be loaded and all files are accessable as `mass0:<file>` or `mass1:<file>`.
+
+For the ATA device there is also read-ony HDLoader compatibility. HDLoader uses APA partitioning and puts the iso files directly into the partitions, without using a filesystem.
+During the loading phase, the drivers will be loaded and the iso's are accessable as `hdl:<file>`.
+Note that the HDLoader backing store is currently read-ony, and limited to only emulating the DVD.
 
 ## CD/DVD emulation
 The following CD/DVD emulation drivers are supported:
@@ -48,6 +56,7 @@ Options:
   -bsd=<driver>     Backing store drivers, supported are:
                     - no (default)
                     - ata
+                    - ata-hdl
                     - usb
                     - mx4sio
                     - udpbd
@@ -91,14 +100,15 @@ Options:
                     - 5: IOP: Emulate DVD-DL
                     Multiple options possible, for example -gc=23
 
-  -eC               Enable debug colors
-  -eL               Enable logo (adds rom0:PS2LOGO to arguments)
+  -cfg=<file>       Load extra user/game specific config file (without .toml extension)
+
+  -dbc              Enable debug colors
+  -logo             Enable logo (adds rom0:PS2LOGO to arguments)
 
   --b               Break, all following parameters are passed to the ELF
 
 Usage examples:
   neutrino.elf -bsd=usb -dvd=mass:path/to/filename.iso
-  neutrino.elf
-  neutrino.elf -dvd=esr
-  neutrino.elf -elf=rom0:OSDSYS --b SkipMc SkipHdd BootBrowser
+  neutrino.elf -bsd=ata -dvd=mass:path/to/filename.iso
+  neutrino.elf -bsd=ata-hdl -dvd=hdl:filename.iso
 ```
