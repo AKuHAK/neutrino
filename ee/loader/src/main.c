@@ -689,8 +689,13 @@ int load_driver(const char * type, const char * subtype)
         snprintf(filename, 256, "config/%s.toml", type);
     fp = fopen(filename, "r");
     if (!fp) {
-        printf("ERROR: %s: failed to open\n", filename);
-        goto err_exit;
+        printf("ERROR: %s: failed to open, trying default path...\n", filename);
+        chdir("mc0:/neutrino/");
+        fp = fopen(filename, "r");
+        if (!fp) {
+            printf("ERROR: %s: failed to open\n", filename);
+            goto err_exit;
+        }
     }
     tbl_root = toml_parse_file(fp, errbuf, sizeof(errbuf));
     fclose(fp);
