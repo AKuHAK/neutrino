@@ -888,6 +888,53 @@ int main(int argc, char *argv[])
     printf("-         By Maximus32         -\n");
     printf("--------------------------------\n");
 
+
+    printf("argv[0]: %s\n", argv[0]);
+/*
+ * Handle HDD OSD launch argument
+ */
+if (argc == 1 && strncmp(argv[0], "hdd", 3) == 0) {
+    printf("argv[0]: %s\n", argv[0]); // Debugging: Print the value of argv[0]
+
+    char *start, *end;
+
+    // Parse the hdd string: expect form hdd{0 or 1}:gamename:path
+    start = strchr(argv[0], ':'); // Find first colon
+    if (start != NULL) {
+        start++;                  // Move past the first colon
+        end = strchr(start, ':'); // Find second colon
+
+        if (end != NULL) {
+            char gamename[32 + 1] = {0}; // 32 characters + null terminator
+            size_t len = end - start;
+            if (len > 32) len = 32;
+
+            strncpy(gamename, start, len);
+            gamename[len] = '\0';
+
+            printf("Parsed gamename: %s\n", gamename); // Debugging: Print the parsed gamename
+
+            // Reassign argv[0] to keep only the path after the second colon
+            argv[0] = end + 1;
+
+            printf("argv[0] after reassignment: %s\n", argv[0]); // Debugging: Print the new argv[0]
+
+            // Reassign other arguments
+            argv[1] = "-bsd=ata";
+            argv[2] = "-bsdfs=hdl";
+            snprintf(argv[3], 64, "-dvd=hdl:%s", gamename);
+
+            printf("argv[1]: %s\n", argv[1]); // Debugging: Print argv[1]
+            printf("argv[2]: %s\n", argv[2]); // Debugging: Print argv[2]
+            printf("argv[3]: %s\n", argv[3]); // Debugging: Print argv[3]
+        } else {
+            printf("Error: Second colon not found in argv[0].\n"); // Debugging: If second colon is missing
+        }
+    } else {
+        printf("Error: First colon not found in argv[0].\n"); // Debugging: If first colon is missing
+    }
+}
+
     /*
      * Initialiaze structures before filling them from config files
      */
