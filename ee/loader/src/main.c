@@ -111,6 +111,8 @@ void print_usage()
     printf("                    - 5: IOP: Emulate DVD-DL\n");
     printf("                    Multiple options possible, for example -gc=23\n");
     printf("\n");
+    printf("  -cwd=<path>       Change working directory\n");
+    printf("\n");
     printf("  -cfg=<file>       Load extra user/game specific config file (without .toml extension)\n");
     printf("\n");
     printf("  -dbc              Enable debug colors\n");
@@ -165,6 +167,7 @@ struct SSystemSettings {
     char *sELFFile;
     char *sMT;
     char *sGC;
+    char *sCWDpath;
     char *sCFGFile;
     int bDebugColors;
     int bLogo;
@@ -730,6 +733,7 @@ int load_driver(const char * type, const char * subtype)
     toml_string_in_overwrite(tbl_root, "default_elf",    &sys.sELFFile);
     toml_string_in_overwrite(tbl_root, "default_mt",     &sys.sMT);
     toml_string_in_overwrite(tbl_root, "default_gc",     &sys.sGC);
+    toml_string_in_overwrite(tbl_root, "default_cwd",    &sys.sCWDpath);
     toml_string_in_overwrite(tbl_root, "default_cfg",    &sys.sCFGFile);
     toml_bool_in_overwrite  (tbl_root, "default_dbc",    &sys.bDebugColors);
     toml_bool_in_overwrite  (tbl_root, "default_logo",   &sys.bLogo);
@@ -890,14 +894,6 @@ int main(int argc, char *argv[])
     memset(&drv, 0, sizeof(struct SDriver));
 
     /*
-     * Load system settings
-     */
-    if (load_driver("system", NULL) < 0) {
-        printf("ERROR: failed to load system settings\n");
-        return -1;
-    }
-
-    /*
      * Debugging / testing
      * Becouse PSX2 does not support command line arguments, create a file
      * `config/pcsx2.toml` and put all arguments there. See `config/system.toml`
@@ -938,6 +934,8 @@ int main(int argc, char *argv[])
             sys.sMT = &argv[i][4];
         else if (!strncmp(argv[i], "-gc=", 4))
             sys.sGC = &argv[i][4];
+        else if (!strncmp(argv[i], "-cwd", 5))
+            sys.sCWDpath = &argv[i][5];
         else if (!strncmp(argv[i], "-cfg=", 5))
             sys.sCFGFile = &argv[i][5];
         else if (!strncmp(argv[i], "-dbc", 4))
@@ -953,6 +951,24 @@ int main(int argc, char *argv[])
             print_usage();
             return -1;
         }
+    }
+
+    /*
+     * Change working directory
+     */
+    if (sys.sCWDpath != NULL) {
+        if (chdir(sys.sCWDpath) != 0) {
+            printf("ERROR: failed to change working directory\n");
+            return -1;
+        }
+    }
+
+    /*
+     * Load system settings
+     */
+    if (load_driver("system", NULL) < 0) {
+        printf("ERROR: failed to load system settings\n");
+        return -1;
     }
 
     /*
