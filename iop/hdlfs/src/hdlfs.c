@@ -232,11 +232,53 @@ int hdl_rmdir(iomanX_iop_file_t *f, const char *path)
     M_DEBUG("%s() - not supported\n", __FUNCTION__);
     return -EIO;
 }
+typedef struct {
+    int fd;               // File descriptor for the HDD device
+    int index;            // Current index in the list of partitions
+    iox_dirent_t entries[MAX_PARTITIONS]; // Cache of partitions
+    int total_entries;    // Total number of valid entries
+} hdl_dir_state_t;
+
 int hdl_dopen(iomanX_iop_file_t *f, const char *path)
 {
-    M_DEBUG("%s()\n", __FUNCTION__);
-    return -EIO;
+    M_DEBUG("%s(%s)\n", __FUNCTION__, path);
+
+    // Check if the path is root (e.g., "hdd0:" or "hdd0:/")
+    if (strcmp(path, "hdd0:") != 0 && strcmp(path, "hdd0:/") != 0) {
+        M_DEBUG("ERROR: Invalid directory path: %s\n", path);
+        return -ENOENT;
+    }
+
+    // Allocate state structure
+    hdl_dir_state_t *state = malloc(sizeof(hdl_dir_state_t));
+    if (!state)
+        return -ENOMEM;
+
+    memset(state, 0, sizeof(hdl_dir_state_t));
+    state->fd = iomanX_dopen("hdd0:");
+    if (state->fd < 0) {
+        free(state);
+        M_DEBUG("ERROR: Unable to open hdd0:\n");
+        return -ENODEV;
+    }
+
+    // Populate entries treating partitions as files
+    iox_dirent_t dirent;
+    while (iomanX_dread(state->fd, &dirent) > 0) {
+        if (dirent.stat.mode == HDL_FS_MAGIC && (dirent.stat.attr & APA_FLAG_SUB) == 0) {
+            // Add to entries list as a "file"
+            if (state->total_entries < MAX_PARTITIONS) {
+                state->entries[state->total_entries++] = dirent;
+            }
+        }
+    }
+
+    // Store the state structure in the file structure's private field
+    f->privdata = state;
+
+    return 0; // Success
 }
+
 int hdl_dclose(iomanX_iop_file_t *f)
 {
     M_DEBUG("%s()\n", __FUNCTION__);
@@ -245,8 +287,28 @@ int hdl_dclose(iomanX_iop_file_t *f)
 int hdl_dread(iomanX_iop_file_t *f, iox_dirent_t *dirent)
 {
     M_DEBUG("%s()\n", __FUNCTION__);
-    return -EIO;
+
+    hdl_dir_state_t *state = (hdl_dir_state_t *)f->privdata;
+    if (!state)
+        return -EINVAL;
+
+    if (state->index >= state->total_entries) {
+        return 0; // End of directory
+    }
+
+    // Get the next partition
+    iox_dirent_t *current_entry = &state->entries[state->index++];
+
+    // Populate the output entry as a file
+    memset(dirent, 0, sizeof(iox_dirent_t));
+    snprintf(dirent->name, sizeof(dirent->name), "%s.iso", current_entry->name);
+    dirent->stat.mode = FIO_SO_IFREG; // Mark as a regular file
+    dirent->stat.attr = 0;           // No special attributes
+    dirent->stat.size = 0; // Copy size (if applicable)
+
+    return 1; // One file returned
 }
+
 int hdl_getstat(iomanX_iop_file_t *f, const char *name, iox_stat_t *stat)
 {
     M_DEBUG("%s()\n", __FUNCTION__);
